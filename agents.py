@@ -106,7 +106,52 @@ def validate_developer(data: dict) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
-# 3. TESTING AGENT
+# 3. CODE REVIEW AGENT
+# ---------------------------------------------------------------------------
+REVIEWER_PROMPT = f"""You are the Code Review Agent in a software team pipeline.
+
+Your input: the JSON plan plus the Development Agent's files.
+Your job: review the code against the plan. You do NOT modify code —
+you approve it or list the issues the Development Agent must fix.
+
+Look for: acceptance criteria not implemented, bugs, security problems
+(injection, unvalidated input), missing error handling on endpoints, and
+files from the plan that were not implemented.
+
+Output JSON schema:
+{{
+  "approved": true,
+  "issues": [
+    {{"file": "main.py", "severity": "high|medium|low", "description": "what is wrong and how to fix it"}}
+  ],
+  "summary": "one-paragraph review verdict"
+}}
+
+Rules:
+- approved must be a JSON boolean; approved=false requires at least one issue.
+- Only reject for real problems that would make tests fail or create security
+  risks — this is a minimal POC, do not demand production polish.
+{JSON_RULES}"""
+
+
+def validate_reviewer(data: dict) -> tuple[bool, str]:
+    if not isinstance(data.get("approved"), bool):
+        return False, "Output must contain a boolean 'approved'"
+    if not str(data.get("summary", "")).strip():
+        return False, "Output must contain a non-empty 'summary'"
+    issues = data.get("issues")
+    if not isinstance(issues, list):
+        return False, "'issues' must be a list"
+    if not data["approved"] and not issues:
+        return False, "A rejection must list at least one issue"
+    for i in issues:
+        if not all(k in i for k in ("file", "severity", "description")):
+            return False, "Each issue needs 'file', 'severity', and 'description'"
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
+# 4. TESTING AGENT
 # ---------------------------------------------------------------------------
 TESTER_PROMPT = f"""You are the Testing Agent in a software team pipeline.
 
@@ -145,7 +190,7 @@ def validate_tester(data: dict) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
-# 4. DEPLOYMENT AGENT
+# 5. DEPLOYMENT AGENT
 # ---------------------------------------------------------------------------
 DEPLOYER_PROMPT = f"""You are the Deployment Agent in a software team pipeline.
 
@@ -188,6 +233,7 @@ def validate_deployer(data: dict) -> tuple[bool, str]:
 PIPELINE = [
     {"name": "planner",   "title": "Analysis & Planning Agent", "system_prompt": PLANNER_PROMPT,   "validate": validate_planner},
     {"name": "developer", "title": "Development Agent",         "system_prompt": DEVELOPER_PROMPT, "validate": validate_developer},
+    {"name": "reviewer",  "title": "Code Review Agent",         "system_prompt": REVIEWER_PROMPT,  "validate": validate_reviewer},
     {"name": "tester",    "title": "Testing Agent",             "system_prompt": TESTER_PROMPT,    "validate": validate_tester},
     {"name": "deployer",  "title": "Deployment Agent",          "system_prompt": DEPLOYER_PROMPT,  "validate": validate_deployer},
 ]

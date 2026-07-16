@@ -33,6 +33,7 @@ from agents import PIPELINE, parse_json_response
 MODEL = "claude-sonnet-4-6"     # good balance of capability and cost
 MAX_TOKENS = 8000
 MAX_RETRIES = 2                  # per stage, on validation failure
+MAX_REVIEW_LOOPS = 1             # dev<->review feedback iterations
 MAX_TEST_FIX_LOOPS = 2           # dev<->test feedback iterations
 OUTPUT_DIR = Path("pipeline_output")
 APP_DIR = OUTPUT_DIR / "app"     # where generated code + tests are written
@@ -159,6 +160,37 @@ def install_with_dev_fix(code: dict, dev_input: str, developer: dict) -> dict:
     return code
 
 
+def run_review(reviewer: dict, developer: dict, plan: dict, code: dict,
+               dev_input: str) -> dict:
+    """Review the code; route issues back to the developer, bounded.
+
+    Reviewers advise, tests decide: if issues remain after the loop,
+    warn loudly and proceed rather than hard-stopping.
+    """
+    for loop in range(MAX_REVIEW_LOOPS + 1):
+        review_input = (
+            f"PLAN:\n{json.dumps(plan, indent=2)}\n\n"
+            f"APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}"
+        )
+        review = run_stage(reviewer, review_input)
+        if review["approved"]:
+            print("  ✓ Code review approved")
+            return code
+        issues = json.dumps(review["issues"], indent=2)
+        print(f"  ✗ Code review rejected:\n{issues}")
+        if loop == MAX_REVIEW_LOOPS:
+            print("\n⚠ WARNING: proceeding with unresolved review issues — tests decide.")
+            return code
+        fix_input = (
+            f"{dev_input}\n\nYOUR PREVIOUS CODE:\n{json.dumps(code['files'], indent=2)}"
+            f"\n\nCODE REVIEW ISSUES TO FIX:\n{issues}"
+        )
+        code = run_stage(developer, fix_input)
+        write_files(code["files"], APP_DIR)
+        code = install_with_dev_fix(code, dev_input, developer)
+    return code
+
+
 def run_tests() -> tuple[bool, str]:
     """Execute pytest against the generated app. Returns (passed, output)."""
     result = subprocess.run(
@@ -174,7 +206,7 @@ def run_tests() -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 def main() -> None:
     task = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TASK
-    planner, developer, tester, deployer = PIPELINE
+    planner, developer, reviewer, tester, deployer = PIPELINE
     print(f"🎯 Task: {task}")
     if MOCK:
         print("⚠ MOCK mode: using canned responses, no API calls")
@@ -182,12 +214,15 @@ def main() -> None:
     # Stage 1: Planning — input is the raw user task
     plan = run_stage(planner, task)
 
-    # Stage 2 & 3: Development + Testing with a supervised feedback loop
+    # Stage 2: Development
     dev_input = f"PLAN:\n{json.dumps(plan, indent=2)}"
     code = run_stage(developer, dev_input)
     write_files(code["files"], APP_DIR)
     setup_venv()
     code = install_with_dev_fix(code, dev_input, developer)
+
+    # Stage 3: Code review — issues go back to the developer, bounded
+    code = run_review(reviewer, developer, plan, code, dev_input)
 
     tester_input = (
         f"ACCEPTANCE CRITERIA:\n{json.dumps(plan['acceptance_criteria'], indent=2)}\n\n"
@@ -216,7 +251,7 @@ def main() -> None:
         write_files(code["files"], APP_DIR)
         code = install_with_dev_fix(code, dev_input, developer)
 
-    # Stage 4: Deployment — input is the verified code
+    # Stage 5: Deployment — input is the verified code
     deploy_input = (
         f"VERIFIED APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}\n\n"
         f"HOW TO RUN: {code.get('how_to_run', 'unknown')}"
@@ -275,6 +310,12 @@ def mock_response(system_prompt: str) -> str:
              "content": "fastapi>=0.115\nuvicorn>=0.30\nhttpx>=0.27\n"}],
             "how_to_run": "uvicorn main:app",
             "notes": "in-memory storage",
+        })
+    if system_prompt.startswith("You are the Code Review Agent"):
+        return json.dumps({
+            "approved": True,
+            "issues": [],
+            "summary": "Code implements the plan; minimal and correct for a POC.",
         })
     if system_prompt.startswith("You are the Testing Agent"):
         return json.dumps({
