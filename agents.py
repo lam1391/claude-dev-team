@@ -72,7 +72,8 @@ Your job: write the complete, working code for every file in the plan.
 Output JSON schema:
 {{
   "files": [
-    {{"path": "relative/path.py", "content": "full file content"}}
+    {{"path": "relative/path.py", "content": "full file content"}},
+    {{"path": "requirements.txt", "content": "fastapi>=0.115\\nhttpx>=0.27\\n"}}
   ],
   "how_to_run": "one-line command to start the app",
   "notes": "anything the Testing Agent should know"
@@ -80,6 +81,10 @@ Output JSON schema:
 
 Rules:
 - Implement EVERY file listed in the plan's files_to_create.
+- ALWAYS include a requirements.txt at the app root pinning at least major
+  versions, covering every third-party import in your code. Do NOT list
+  pytest — the orchestrator installs it. If the app uses FastAPI, include
+  httpx (fastapi.testclient needs it).
 - Code must be complete and syntactically valid — it will be executed.
 - Follow the acceptance criteria exactly; the Testing Agent will verify them.
 - If a previous test run failed, you will receive the failure output —
@@ -95,11 +100,58 @@ def validate_developer(data: dict) -> tuple[bool, str]:
             return False, f"Each file needs 'path' and 'content': got {list(f.keys())}"
         if not f["content"].strip():
             return False, f"File {f['path']} has empty content"
+    if not any(f["path"] == "requirements.txt" for f in data["files"]):
+        return False, "files must include a requirements.txt at the app root"
     return True, ""
 
 
 # ---------------------------------------------------------------------------
-# 3. TESTING AGENT
+# 3. CODE REVIEW AGENT
+# ---------------------------------------------------------------------------
+REVIEWER_PROMPT = f"""You are the Code Review Agent in a software team pipeline.
+
+Your input: the JSON plan plus the Development Agent's files.
+Your job: review the code against the plan. You do NOT modify code —
+you approve it or list the issues the Development Agent must fix.
+
+Look for: acceptance criteria not implemented, bugs, security problems
+(injection, unvalidated input), missing error handling on endpoints, and
+files from the plan that were not implemented.
+
+Output JSON schema:
+{{
+  "approved": true,
+  "issues": [
+    {{"file": "main.py", "severity": "high|medium|low", "description": "what is wrong and how to fix it"}}
+  ],
+  "summary": "one-paragraph review verdict"
+}}
+
+Rules:
+- approved must be a JSON boolean; approved=false requires at least one issue.
+- Only reject for real problems that would make tests fail or create security
+  risks — this is a minimal POC, do not demand production polish.
+{JSON_RULES}"""
+
+
+def validate_reviewer(data: dict) -> tuple[bool, str]:
+    if not isinstance(data.get("approved"), bool):
+        return False, "Output must contain a boolean 'approved'"
+    if not str(data.get("summary", "")).strip():
+        return False, "Output must contain a non-empty 'summary'"
+    issues = data.get("issues")
+    if not isinstance(issues, list):
+        return False, "'issues' must be a list"
+    if not data["approved"] and not issues:
+        return False, "A rejection must list at least one issue"
+    for i in issues:
+        if not all(k in i for k in ("file", "severity", "description")):
+            return False, "Each issue needs 'file', 'severity', and 'description'"
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
+# 4. TESTING AGENT
 # ---------------------------------------------------------------------------
 TESTER_PROMPT = f"""You are the Testing Agent in a software team pipeline.
 
@@ -138,7 +190,7 @@ def validate_tester(data: dict) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
-# 4. DEPLOYMENT AGENT
+# 5. DEPLOYMENT AGENT
 # ---------------------------------------------------------------------------
 DEPLOYER_PROMPT = f"""You are the Deployment Agent in a software team pipeline.
 
@@ -181,6 +233,7 @@ def validate_deployer(data: dict) -> tuple[bool, str]:
 PIPELINE = [
     {"name": "planner",   "title": "Analysis & Planning Agent", "system_prompt": PLANNER_PROMPT,   "validate": validate_planner},
     {"name": "developer", "title": "Development Agent",         "system_prompt": DEVELOPER_PROMPT, "validate": validate_developer},
+    {"name": "reviewer",  "title": "Code Review Agent",         "system_prompt": REVIEWER_PROMPT,  "validate": validate_reviewer},
     {"name": "tester",    "title": "Testing Agent",             "system_prompt": TESTER_PROMPT,    "validate": validate_tester},
     {"name": "deployer",  "title": "Deployment Agent",          "system_prompt": DEPLOYER_PROMPT,  "validate": validate_deployer},
 ]

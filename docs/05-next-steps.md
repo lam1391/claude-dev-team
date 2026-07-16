@@ -53,3 +53,4 @@ The validators change (SQL linting, dry-run `EXPLAIN`, data-quality thresholds i
 - [ ] Log every request/response pair for audit
 - [ ] Pin the model version and re-test prompts when upgrading models
 - [ ] Keep the hard-stop behavior — never auto-deploy on ambiguous results
+- [ ] Bring the Claude Code variant up to parity: its tester runs bare pytest with no venv/requirements install, so missing generated-app dependencies still masquerade as code bugs there (the Python orchestrator already fixed this)

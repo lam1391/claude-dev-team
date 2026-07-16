@@ -20,6 +20,7 @@ Usage:
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -33,8 +34,12 @@ MODEL = "claude-sonnet-4-6"     # good balance of capability and cost
 MAX_TOKENS = 8000
 MAX_RETRIES = 2                  # per stage, on validation failure
 MAX_TEST_FIX_LOOPS = 2           # dev<->test feedback iterations
+MAX_REVIEW_LOOPS = 1             # dev<->review feedback iterations
 OUTPUT_DIR = Path("pipeline_output")
 APP_DIR = OUTPUT_DIR / "app"     # where generated code + tests are written
+VENV_DIR = APP_DIR / ".venv"    # isolated env for the GENERATED app's deps
+VENV_PYTHON = str(VENV_DIR.resolve() / "bin" / "python")  # absolute: run_tests uses cwd=APP_DIR
+PIP_TIMEOUT = 300                # seconds for dependency installation
 MOCK = os.environ.get("MOCK") == "1"
 
 DEFAULT_TASK = "Build a minimal REST API for a todo list with endpoints to create, list, and delete todos."
@@ -116,10 +121,80 @@ def write_files(files: list[dict], base: Path) -> None:
         print(f"  ↳ wrote {target}")
 
 
+def setup_venv() -> None:
+    """Create a fresh venv for the generated app (once per run)."""
+    if VENV_DIR.exists():
+        shutil.rmtree(VENV_DIR)
+    subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
+    print(f"  ↳ created venv: {VENV_DIR}")
+
+
+def install_deps() -> tuple[bool, str]:
+    """Install the generated requirements.txt + pytest into the app venv."""
+    result = subprocess.run(
+        [VENV_PYTHON, "-m", "pip", "install", "-q",
+         "-r", str(APP_DIR / "requirements.txt"), "pytest"],
+        capture_output=True, text=True, timeout=PIP_TIMEOUT,
+    )
+    output = result.stdout + result.stderr
+    return result.returncode == 0, output
+
+
+def install_with_dev_fix(code: dict, dev_input: str, developer: dict) -> dict:
+    """Install deps; on failure, send the pip error back to the developer once."""
+    ok, output = install_deps()
+    if ok:
+        print("  ↳ dependencies installed")
+        return code
+    print(f"  ✗ dependency install failed:\n{output[-1500:]}")
+    fix_input = (
+        f"{dev_input}\n\nYOUR PREVIOUS CODE:\n{json.dumps(code['files'], indent=2)}"
+        f"\n\nDEPENDENCY INSTALL FAILED — fix requirements.txt:\n{output[-3000:]}"
+    )
+    code = run_stage(developer, fix_input)
+    write_files(code["files"], APP_DIR)
+    ok, output = install_deps()
+    if not ok:
+        raise RuntimeError(f"Dependency install still failing:\n{output[-2000:]}")
+    print("  ↳ dependencies installed")
+    return code
+
+
+def run_review(reviewer: dict, developer: dict, plan: dict, code: dict,
+               dev_input: str) -> dict:
+    """Review the code; route issues back to the developer, bounded.
+
+    Reviewers advise, tests decide: if issues remain after the loop,
+    warn loudly and proceed rather than hard-stopping.
+    """
+    for loop in range(MAX_REVIEW_LOOPS + 1):
+        review_input = (
+            f"PLAN:\n{json.dumps(plan, indent=2)}\n\n"
+            f"APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}"
+        )
+        review = run_stage(reviewer, review_input)
+        if review["approved"]:
+            print("  ✓ Code review approved")
+            return code
+        issues = json.dumps(review["issues"], indent=2)
+        print(f"  ✗ Code review rejected:\n{issues}")
+        if loop == MAX_REVIEW_LOOPS:
+            print("\n⚠ WARNING: proceeding with unresolved review issues — tests decide.")
+            return code
+        fix_input = (
+            f"{dev_input}\n\nYOUR PREVIOUS CODE:\n{json.dumps(code['files'], indent=2)}"
+            f"\n\nCODE REVIEW ISSUES TO FIX:\n{issues}"
+        )
+        code = run_stage(developer, fix_input)
+        write_files(code["files"], APP_DIR)
+        code = install_with_dev_fix(code, dev_input, developer)
+    return code
+
+
 def run_tests() -> tuple[bool, str]:
     """Execute pytest against the generated app. Returns (passed, output)."""
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-x", "-q", "--no-header"],
+        [VENV_PYTHON, "-m", "pytest", "-x", "-q", "--no-header"],
         cwd=APP_DIR, capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
@@ -131,7 +206,7 @@ def run_tests() -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 def main() -> None:
     task = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TASK
-    planner, developer, tester, deployer = PIPELINE
+    planner, developer, reviewer, tester, deployer = PIPELINE
     print(f"🎯 Task: {task}")
     if MOCK:
         print("⚠ MOCK mode: using canned responses, no API calls")
@@ -139,11 +214,17 @@ def main() -> None:
     # Stage 1: Planning — input is the raw user task
     plan = run_stage(planner, task)
 
-    # Stage 2 & 3: Development + Testing with a supervised feedback loop
+    # Stage 2: Development
     dev_input = f"PLAN:\n{json.dumps(plan, indent=2)}"
     code = run_stage(developer, dev_input)
     write_files(code["files"], APP_DIR)
+    setup_venv()
+    code = install_with_dev_fix(code, dev_input, developer)
 
+    # Stage 3: Code review — issues go back to the developer, bounded
+    code = run_review(reviewer, developer, plan, code, dev_input)
+
+    # Stage 4: Testing — with a supervised dev<->test feedback loop
     tester_input = (
         f"ACCEPTANCE CRITERIA:\n{json.dumps(plan['acceptance_criteria'], indent=2)}\n\n"
         f"APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}"
@@ -169,8 +250,9 @@ def main() -> None:
         )
         code = run_stage(developer, fix_input)
         write_files(code["files"], APP_DIR)
+        code = install_with_dev_fix(code, dev_input, developer)
 
-    # Stage 4: Deployment — input is the verified code
+    # Stage 5: Deployment — input is the verified code
     deploy_input = (
         f"VERIFIED APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}\n\n"
         f"HOW TO RUN: {code.get('how_to_run', 'unknown')}"
@@ -224,9 +306,17 @@ def mock_response(system_prompt: str) -> str:
                 "    if tid not in todos:\n"
                 "        raise HTTPException(404)\n"
                 "    return todos.pop(tid)\n"
-            )}],
+            )},
+            {"path": "requirements.txt",
+             "content": "fastapi>=0.115\nuvicorn>=0.30\nhttpx>=0.27\n"}],
             "how_to_run": "uvicorn main:app",
             "notes": "in-memory storage",
+        })
+    if system_prompt.startswith("You are the Code Review Agent"):
+        return json.dumps({
+            "approved": True,
+            "issues": [],
+            "summary": "Code implements the plan; minimal and correct for a POC.",
         })
     if system_prompt.startswith("You are the Testing Agent"):
         return json.dumps({

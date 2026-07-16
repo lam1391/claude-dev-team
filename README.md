@@ -1,6 +1,6 @@
 # Claude Dev Team — Multi-Agent Pipeline POC
 
-A proof of concept for an AI development team built with the Claude API. Four specialized agents work in sequence — each one's output becomes the next one's input — while an **orchestrator** supervises the whole pipeline: it validates every output, retries failed stages, executes the generated tests for real, and routes test failures back to the Development Agent.
+A proof of concept for an AI development team built with the Claude API. Five specialized agents work in sequence — each one's output becomes the next one's input — while an **orchestrator** supervises the whole pipeline: it validates every output, retries failed stages, executes the generated tests for real, and routes both review issues and test failures back to the Development Agent for fixes.
 
 ## Documentation
 
@@ -15,19 +15,22 @@ A proof of concept for an AI development team built with the Claude API. Four sp
 ## Architecture
 
 ```
-                        ORCHESTRATOR (orchestrator.py)
-                        validates · retries · routes · audits
-        ┌──────────────┬──────────────┬──────────────┐
-        ▼              ▼              ▼              ▼
- ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
- │ 1. Analysis │ │ 2. Develop- │ │ 3. Testing  │ │ 4. Deploy-  │
- │  & Planning │─►│    ment     │─►│             │─►│    ment     │
- └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
-   plan (JSON)     code files      pytest files    Dockerfile +
-                       ▲                │           deploy steps
-                       └── fix loop ────┘
-                        (orchestrator runs pytest;
-                         failures go back to dev)
+                   ORCHESTRATOR (orchestrator.py)
+               validates · retries · routes · audits
+      ┌─────────────┬─────────────┬─────────────┬─────────────┐
+      ▼             ▼             ▼             ▼             ▼
+
+┌────────────┐┌────────────┐┌────────────┐┌────────────┐┌────────────┐
+│ 1. Plan    ││2. Develop  ││3. Review   ││4. Test     ││5. Deploy   │
+│ & Analyze  ││            ││            ││            ││            │
+└────────────┘└────────────┘└────────────┘└────────────┘└────────────┘
+ plan (JSON)  code files    approve/    pytest files  Dockerfile +
+                  ▲  ▲      issues          │        deploy steps
+                  │  └───── review loop ──┘
+                  └─────── test fix loop ───┘
+
+     (orchestrator runs pip install + pytest for real;
+      review issues and test failures go back to dev)
 ```
 
 The key insight: each "agent" is simply **one API call with a specialized system prompt and a strict JSON output contract**. The intelligence of the pipeline lives in the orchestrator, which is plain Python you fully control — exactly like a DAG where each node happens to be an LLM call.
@@ -38,6 +41,8 @@ The key insight: each "agent" is simply **one API call with a specialized system
 |---|---|---|
 | Schema validation | `agents.py` → `validate_*` functions | Checks every agent's JSON against its contract |
 | Retry with feedback | `orchestrator.py` → `run_stage()` | On invalid output, re-prompts the agent with the exact error (up to `MAX_RETRIES`) |
+| Dependency install | `orchestrator.py` → `setup_venv()` / `install_deps()` | Installs the generated requirements.txt into an isolated venv (`pipeline_output/app/.venv`) before tests; pip errors go back to the Development Agent |
+| Dev↔Review feedback loop | `orchestrator.py` → `run_review()` | Review issues are sent back to the Development Agent (up to `MAX_REVIEW_LOOPS`); if still rejected, proceeds with a loud warning — reviewers advise, tests decide |
 | Real test execution | `orchestrator.py` → `run_tests()` | Runs `pytest` on the generated code — no trusting the LLM's word |
 | Dev↔Test feedback loop | `orchestrator.py` → `main()` | Test failures are sent back to the Development Agent with the failure log (up to `MAX_TEST_FIX_LOOPS`) |
 | Audit trail | `pipeline_output/*.json`, `test_run_*.log` | Every stage output and test run is saved to disk |
@@ -59,7 +64,7 @@ pip install -r requirements.txt
 MOCK=1 python orchestrator.py
 ```
 
-This runs the entire pipeline with canned agent responses. You should see all four stages pass, tests actually execute, and files appear in `pipeline_output/app/`. This proves the orchestration logic before any API cost.
+This runs the entire pipeline with canned agent responses. You should see all five stages pass, tests actually execute, and files appear in `pipeline_output/app/`. This proves the orchestration logic before any API cost.
 
 **Step 3 — Set your API key**
 
@@ -90,6 +95,7 @@ python orchestrator.py "Build a URL shortener API with in-memory storage"
 pipeline_output/
 ├── planner_output.json     # the plan (audit what was decided)
 ├── developer_output.json   # the code, as JSON
+├── reviewer_output.json    # review verdict + issues
 ├── tester_output.json      # tests + criteria coverage map
 ├── deployer_output.json    # deployment artifacts
 ├── test_run_1.log          # actual pytest output
@@ -116,13 +122,13 @@ curl http://localhost:8000/todos
 
 **Why `claude-sonnet-4-6`?** Strong coding capability at a good price for a POC. You can mix models per stage — e.g., `claude-opus-4-8` for the planner (hardest reasoning) and `claude-haiku-4-5` for the deployer (most mechanical). Change `MODEL` in `orchestrator.py`, or make it per-stage in `agents.py`.
 
-**Cost note:** one full run makes 4–8 API calls (more if retries trigger). With Sonnet, expect cents per run for tasks this size.
+**Cost note:** one full run makes 5–10 API calls (more if retries trigger). With Sonnet, expect cents per run for tasks this size.
 
 ## Alternative: the same team as Claude Code subagents
 
-The folder `claude-code-alternative/` contains the same four agents defined as Claude Code subagents (`.claude/agents/*.md`). Copy that `.claude/` folder into any project, open Claude Code, and say:
+The folder `claude-code-alternative/` contains the same five agents defined as Claude Code subagents (`.claude/agents/*.md`). Copy that `.claude/` folder into any project, open Claude Code, and say:
 
-> Use the planner, developer, tester and deployer agents in sequence to build a todo REST API. Make sure tests pass before deploying.
+> Use the planner, developer, reviewer, tester and deployer agents in sequence to build a todo REST API. Fix any review issues and make sure tests pass before deploying.
 
 Claude Code itself acts as the orchestrator: it delegates to each subagent, and each subagent runs in its own context window with only the tools listed in its frontmatter (note the tester can run Bash but the planner can't — least privilege). This is faster to set up but the supervision logic is prompt-driven rather than code-driven.
 

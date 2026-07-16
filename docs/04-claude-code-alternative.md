@@ -1,6 +1,6 @@
 # 04 — Alternative: Claude Code Subagents
 
-The folder `claude-code-alternative/.claude/agents/` contains the same four-agent team defined as **Claude Code subagents**. In this variant, Claude Code itself plays the orchestrator role.
+The folder `claude-code-alternative/.claude/agents/` contains the same five-agent team defined as **Claude Code subagents**. In this variant, Claude Code itself plays the orchestrator role.
 
 ## How subagents work
 
@@ -17,7 +17,7 @@ You are the Testing Agent. ...
 ```
 
 - **`name` / `description`** — Claude Code uses the description to decide *when* to delegate to this subagent, so the descriptions encode the pipeline order ("Use FIRST", "Use AFTER developer", "Use LAST, only after tests pass").
-- **`tools`** — least-privilege tool scoping. The planner can only read and write (no Bash); the tester can run Bash to execute pytest; the deployer cannot edit application code by convention.
+- **`tools`** — least-privilege tool scoping. The planner can only read and write (no Bash); the reviewer is read-only (`Read, Glob, Grep`) — it reports issues but cannot change code; the tester can run Bash to execute pytest; the deployer cannot edit application code by convention.
 - **Isolated context** — each subagent runs in its own context window, so the developer's long code output does not pollute the planner's context. The handoff medium is the **filesystem** (`plan.md`, source files, test results) instead of JSON messages.
 
 ## Using it
@@ -37,9 +37,7 @@ You are the Testing Agent. ...
 
 3. Ask for the pipeline:
 
-   > Use the planner, developer, tester and deployer agents in sequence to build
-   > a REST API for a todo list. Do not deploy until all tests pass. If tests
-   > fail, send the failures back to the developer agent.
+   > Use the planner, developer, reviewer, tester and deployer agents in sequence to build a REST API for a todo list. Have the developer fix any review issues. Do not deploy until all tests pass. If tests fail, send the failures back to the developer agent.
 
 4. Useful commands while it runs:
    - `/agents` — list and manage the subagents
@@ -49,7 +47,7 @@ You are the Testing Agent. ...
 
 | Aspect | Python orchestrator (this repo's core) | Claude Code subagents |
 |---|---|---|
-| Setup effort | Write/maintain Python | Drop in 4 markdown files |
+| Setup effort | Write/maintain Python | Drop in 5 markdown files |
 | Validation & retries | Deterministic, in code | Prompt-driven, best-effort |
 | Handoff medium | JSON contracts | Files in the working directory |
 | Test execution | Orchestrator runs pytest itself | Tester subagent runs pytest via Bash |

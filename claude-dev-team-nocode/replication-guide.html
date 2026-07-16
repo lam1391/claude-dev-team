@@ -1,0 +1,677 @@
+<title>Claude Dev Team — No-Code Replication Guide</title>
+<style>
+  :root {
+    --bg: #f5f7f4;
+    --surface: #ffffff;
+    --ink: #232b2e;
+    --muted: #5b6a6e;
+    --line: #dbe2dd;
+    --accent: #1e6e64;
+    --accent-soft: #e2efec;
+    --code-bg: #edf1ee;
+    --code-ink: #2a3438;
+    --planner: #5b5fc7;
+    --developer: #1f7a8c;
+    --reviewer: #8c4a98;
+    --tester: #a8721c;
+    --deployer: #3b7d46;
+    --danger: #b04a3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141a19;
+      --surface: #1b2321;
+      --ink: #e4eae5;
+      --muted: #96a5a0;
+      --line: #2b3733;
+      --accent: #4fbfae;
+      --accent-soft: #1d2f2b;
+      --code-bg: #101615;
+      --code-ink: #cfdad4;
+      --planner: #8e91e8;
+      --developer: #55aec2;
+      --reviewer: #c084cc;
+      --tester: #d9a54e;
+      --deployer: #6fb97c;
+      --danger: #d97e6e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141a19;
+    --surface: #1b2321;
+    --ink: #e4eae5;
+    --muted: #96a5a0;
+    --line: #2b3733;
+    --accent: #4fbfae;
+    --accent-soft: #1d2f2b;
+    --code-bg: #101615;
+    --code-ink: #cfdad4;
+    --planner: #8e91e8;
+    --developer: #55aec2;
+    --reviewer: #c084cc;
+    --tester: #d9a54e;
+    --deployer: #6fb97c;
+    --danger: #d97e6e;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7f4;
+    --surface: #ffffff;
+    --ink: #232b2e;
+    --muted: #5b6a6e;
+    --line: #dbe2dd;
+    --accent: #1e6e64;
+    --accent-soft: #e2efec;
+    --code-bg: #edf1ee;
+    --code-ink: #2a3438;
+    --planner: #5b5fc7;
+    --developer: #1f7a8c;
+    --reviewer: #8c4a98;
+    --tester: #a8721c;
+    --deployer: #3b7d46;
+    --danger: #b04a3a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    font-size: 16.5px;
+  }
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.25rem 5rem;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  h1 {
+    font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+  .lede { font-size: 1.08rem; color: var(--muted); max-width: 62ch; margin: 0 0 1.5rem; }
+  .lede strong { color: var(--ink); }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0 0 1rem; }
+  .fact {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .fact b { color: var(--accent); font-weight: 650; }
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 3.2rem 0 0.8rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+    text-wrap: balance;
+  }
+  h2 .stepnum {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+  }
+  h3 { font-size: 1.02rem; font-weight: 650; margin: 1.8rem 0 0.5rem; }
+  p { margin: 0.7rem 0; max-width: 65ch; }
+  li { margin: 0.35rem 0; max-width: 62ch; }
+  a { color: var(--accent); }
+
+  pre.code {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    margin: 0.9rem 0 1.4rem;
+  }
+  .filecard { margin: 1.4rem 0 2rem; }
+  .filehead {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 0.55rem 1.1rem;
+  }
+  .filecard pre.code { margin: 0; border-radius: 0 0 8px 8px; }
+  .dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; flex: none; }
+  .dot.planner { background: var(--planner); }
+  .dot.developer { background: var(--developer); }
+  .dot.reviewer { background: var(--reviewer); }
+  .dot.tester { background: var(--tester); }
+  .dot.deployer { background: var(--deployer); }
+  .dot.orch { background: var(--accent); }
+  .modeltag { margin-left: auto; color: var(--muted); }
+
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin: 1.2rem 0 0.6rem;
+    overflow-x: auto;
+  }
+  .caption { font-size: 0.85rem; color: var(--muted); margin: 0.4rem 0 1.5rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.92rem;
+    margin: 1rem 0 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .tablewrap { overflow-x: auto; }
+  th {
+    text-align: left;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 0.5rem 0.9rem 0.5rem 0;
+    border-bottom: 2px solid var(--line);
+  }
+  td { padding: 0.55rem 0.9rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.08em 0.35em;
+  }
+  pre code, .filehead code { background: none; border: none; padding: 0; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 1.1rem;
+    margin: 1.2rem 0;
+    max-width: none;
+  }
+  .callout.warn { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--bg)); }
+  .callout p { margin: 0.3rem 0; }
+
+  .agentchip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.82rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  footer {
+    margin-top: 4rem; padding-top: 1.4rem; border-top: 1px solid var(--line);
+    font-size: 0.85rem; color: var(--muted);
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Claude Dev Team · Replication Guide</p>
+    <h1>Build an AI development team with zero code</h1>
+    <p class="lede">
+      Five specialized agents — planner, developer, reviewer, tester, deployer — each running
+      on <strong>its own model</strong>, chained so that <strong>each agent's output file is the
+      next agent's input</strong>, supervised by an orchestrator. The entire system is
+      <strong>seven markdown files</strong> of Claude Code configuration: no Python, no scripts, no hooks.
+    </p>
+    <div class="facts">
+      <span class="fact"><b>7</b> markdown files</span>
+      <span class="fact"><b>0</b> lines of code</span>
+      <span class="fact"><b>5</b> agents · <b>3</b> models</span>
+      <span class="fact"><b>1</b> slash command</span>
+    </div>
+  </header>
+
+  <h2>How everything connects</h2>
+  <p>
+    You type <code>/dev-team &lt;task&gt;</code>. The main Claude Code session becomes the
+    <strong>orchestrator</strong>: it delegates each stage to a subagent, checks the artifact the
+    stage left on disk, and routes feedback backwards when review or tests fail. Files are the
+    contract between agents — subagents cannot call each other, so everything flows through the
+    orchestrator and the artifacts.
+  </p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    U["🧑‍💻 /dev-team &amp;lt;task&amp;gt;"] --> O["ORCHESTRATOR — main session (dev-team.md)"]
+    O --> P["planner · opus"]
+    P --> PM["📄 plan.md"]
+    PM --> D["developer · sonnet"]
+    D --> SRC["📄 source files + requirements.txt"]
+    SRC --> R["reviewer · opus"]
+    R --> RM["📄 review.md"]
+    RM -- "CHANGES REQUESTED (max 1 loop)" --> D
+    RM -- "APPROVED" --> T["tester · sonnet"]
+    T --> TR["📄 TEST_REPORT.md"]
+    TR -- "TESTS FAILED (max 3 loops)" --> D
+    TR -- "ALL TESTS PASSED · 🔒 gate" --> DE["deployer · haiku"]
+    DE --> OUT["📄 Dockerfile + DEPLOY.md"]
+
+    classDef orch fill:#1e6e64,color:#ffffff,stroke:#1e6e64
+    classDef pl fill:#5b5fc7,color:#ffffff,stroke:#5b5fc7
+    classDef dv fill:#1f7a8c,color:#ffffff,stroke:#1f7a8c
+    classDef rv fill:#8c4a98,color:#ffffff,stroke:#8c4a98
+    classDef ts fill:#a8721c,color:#ffffff,stroke:#a8721c
+    classDef dp fill:#3b7d46,color:#ffffff,stroke:#3b7d46
+    classDef art fill:transparent,stroke-dasharray:4 3
+    class O orch
+    class P pl
+    class D dv
+    class R rv
+    class T ts
+    class DE dp
+    class PM,SRC,RM,TR,OUT art
+</pre>
+  </div>
+  <p class="caption">
+    Solid nodes are agents (color = role, label shows its model). Dashed nodes are the file
+    artifacts that carry data from one agent to the next — they stay on disk as the audit trail.
+  </p>
+
+  <h2><span class="stepnum">STEP 1</span>Create the folder structure</h2>
+  <p>Everything lives inside a <code>.claude/</code> directory. Create the skeleton:</p>
+  <pre class="code">mkdir -p my-dev-team/.claude/agents my-dev-team/.claude/commands
+cd my-dev-team</pre>
+  <p>When you're done, the tree will look like this:</p>
+  <pre class="code">my-dev-team/
+└── .claude/
+    ├── commands/
+    │   └── dev-team.md      ← the orchestrator  (/dev-team &lt;task&gt;)
+    └── agents/
+        ├── planner.md       ← opus   → writes plan.md
+        ├── developer.md     ← sonnet → writes source + requirements.txt
+        ├── reviewer.md      ← opus   → writes review.md
+        ├── tester.md        ← sonnet → runs pytest, writes TEST_REPORT.md
+        └── deployer.md      ← haiku  → writes Dockerfile + DEPLOY.md</pre>
+
+  <h2><span class="stepnum">STEP 2</span>Define the five agents</h2>
+  <p>
+    Each agent is one markdown file in <code>.claude/agents/</code>. The YAML frontmatter carries
+    the three configuration levers — and this is why no hooks are needed:
+  </p>
+  <ul>
+    <li><code>model:</code> — the per-agent model (<code>opus</code>, <code>sonnet</code>, <code>haiku</code>, or <code>inherit</code>). One line replaces any routing machinery.</li>
+    <li><code>tools:</code> — least privilege. The planner and reviewer can't run Bash; only the developer can Edit.</li>
+    <li><code>description:</code> — tells the orchestrator <em>when</em> to use the agent (FIRST, AFTER planner, LAST…).</li>
+  </ul>
+  <p>The body is the job description: its input file(s), its output file(s), and what it must <strong>not</strong> do — the prose version of a JSON contract.</p>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot planner"></span><code>.claude/agents/planner.md</code><span class="modeltag">model: opus</span></div>
+    <pre class="code">---
+name: planner
+description: Analysis &amp; Planning Agent. Use FIRST for any new feature request.
+  Analyzes the requirement and produces plan.md, which the developer agent implements.
+tools: Read, Glob, Grep, Write
+model: opus
+---
+
+You are the Analysis &amp; Planning Agent in an AI development team.
+
+**Your input:** the feature requirement given in your task prompt.
+**Your output:** a file named `plan.md` at the project root.
+
+Analyze the requirement and write a concrete, minimal implementation plan to
+`plan.md` with exactly these sections:
+
+1. **Summary** — one paragraph describing what will be built.
+2. **Tech stack** — the technologies to use. Prefer Python + FastAPI, standard
+   library where possible, no databases (in-memory storage is fine).
+3. **Files to create** — every file with its relative path and purpose.
+   Must include a `requirements.txt` at the app root.
+4. **Acceptance criteria** — a numbered list of testable criteria. Every
+   criterion must be verifiable by an automated test.
+5. **Out of scope** — things deliberately not included.
+
+Rules:
+- Keep the plan SMALL and executable — this is a proof of concept.
+- The plan must be complete enough that the developer agent can implement it
+  without asking questions.
+- Do NOT write application code, tests, or deployment files — only `plan.md`.</pre>
+  </div>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot developer"></span><code>.claude/agents/developer.md</code><span class="modeltag">model: sonnet</span></div>
+    <pre class="code">---
+name: developer
+description: Development Agent. Use AFTER planner. Reads plan.md and implements
+  every file listed. Also use to fix code when the reviewer requests changes
+  or tests fail.
+tools: Read, Write, Edit, Glob, Grep, Bash
+model: sonnet
+---
+
+You are the Development Agent in an AI development team.
+
+**Your input:** `plan.md` — plus, when you are invoked in a fix loop, the
+reviewer's issues or the test failure output included in your task prompt.
+**Your output:** the application source files listed in the plan, including
+`requirements.txt`.
+
+Rules:
+- Read `plan.md` first. Implement EVERY file in its "Files to create" section,
+  completely — no TODOs, no placeholders. The code will be executed.
+- `requirements.txt` must pin at least major versions and cover every import
+  the application needs (pytest is installed by the tester, not you).
+- Follow the acceptance criteria exactly; the tester agent will verify each one.
+- If your task prompt contains review issues or test failure output, fix the
+  reported problems — do not rewrite unrelated code.
+- You may use Bash to sanity-check syntax (e.g., `python -m py_compile`), but
+  do NOT run the test suite — that is the tester agent's job.
+- Do NOT write tests or deployment files — those belong to other agents.
+- Do NOT modify `plan.md`.</pre>
+  </div>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot reviewer"></span><code>.claude/agents/reviewer.md</code><span class="modeltag">model: opus</span></div>
+    <pre class="code">---
+name: reviewer
+description: Code Review Agent. Use AFTER developer and BEFORE tester. Reviews
+  the implemented code against plan.md and writes a verdict to review.md.
+tools: Read, Glob, Grep, Write
+model: opus
+---
+
+You are the Code Review Agent in an AI development team.
+
+**Your input:** `plan.md` and the application source files the developer wrote.
+**Your output:** a file named `review.md` at the project root.
+
+Review the implementation against the plan:
+- Does every file in the plan's "Files to create" section exist and do what
+  the plan says?
+- Does the code satisfy each acceptance criterion?
+- Look for real defects: broken logic, missing error handling on the paths the
+  criteria exercise, imports not covered by `requirements.txt`, security
+  problems. Do not nitpick style.
+
+Write `review.md` with exactly these sections:
+
+1. **Verdict** — the single word `APPROVED` or `CHANGES REQUESTED`.
+2. **Issues** — a list where each entry has: file, severity (high/medium/low),
+   and a description precise enough for the developer to act on. May be empty
+   only when the verdict is APPROVED.
+3. **Summary** — one paragraph explaining the verdict.
+
+Rules:
+- Request changes only for issues that would break an acceptance criterion or
+  the app itself; advisory (low) issues alone do not block approval.
+- Do NOT modify any code — you are read-only except for `review.md`.
+- Do NOT write or run tests.</pre>
+  </div>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot tester"></span><code>.claude/agents/tester.md</code><span class="modeltag">model: sonnet</span></div>
+    <pre class="code">---
+name: tester
+description: Testing Agent. Use AFTER reviewer. Writes pytest tests for every
+  acceptance criterion in plan.md, RUNS them in a fresh venv, and writes the
+  results to TEST_REPORT.md.
+tools: Read, Write, Bash, Glob, Grep
+model: sonnet
+---
+
+You are the Testing Agent in an AI development team.
+
+**Your input:** `plan.md` (the acceptance criteria) and the application
+source files.
+**Your output:** pytest test files, plus `TEST_REPORT.md` at the project root.
+
+Steps, in order:
+
+1. Read the acceptance criteria in `plan.md` and the implemented code.
+2. Write pytest tests covering EVERY acceptance criterion. For FastAPI apps
+   use `fastapi.testclient.TestClient` (no live server needed). Import the app
+   by its file path as implemented (e.g., `from main import app`).
+3. Create a fresh virtual environment: `python -m venv .venv` (recreate it if
+   it exists), then install the app's dependencies plus pytest into it:
+   `.venv/bin/pip install -r requirements.txt pytest`.
+   If the install itself fails, that is a developer problem (bad
+   requirements.txt) — record the pip error as a failure in the report.
+4. Run the tests with the venv's Python: `.venv/bin/python -m pytest -q`.
+5. Write `TEST_REPORT.md` with exactly these sections:
+   - **Verdict** — the single line `ALL TESTS PASSED` or `TESTS FAILED`.
+   - **Criteria coverage** — each acceptance criterion mapped to the test
+     function(s) that verify it.
+   - **Results** — the actual pytest output. On failure, include the full
+     failure output so the developer can fix the problems.
+
+Rules:
+- The report must reflect what pytest ACTUALLY printed — never claim a pass
+  you did not observe.
+- Do NOT fix application code yourself — report failures so the developer
+  agent can fix them.
+- Do NOT modify `plan.md` or write deployment files.</pre>
+  </div>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot deployer"></span><code>.claude/agents/deployer.md</code><span class="modeltag">model: haiku</span></div>
+    <pre class="code">---
+name: deployer
+description: Deployment Agent. Use LAST, only after TEST_REPORT.md says ALL
+  TESTS PASSED. Creates the Dockerfile and DEPLOY.md with documented deploy steps.
+tools: Read, Write, Bash, Glob
+model: haiku
+---
+
+You are the Deployment Agent in an AI development team.
+
+**Your input:** the verified application files and `TEST_REPORT.md`.
+**Your output:** `Dockerfile` and `DEPLOY.md` at the project root.
+
+Before doing anything, read `TEST_REPORT.md`. If its verdict is not
+`ALL TESTS PASSED`, refuse: report that you cannot deploy an unverified
+application and stop.
+
+Then produce:
+
+1. **Dockerfile** — minimal single-container image for the app: slim Python
+   base image, install `requirements.txt`, expose the app port, run the app.
+2. **DEPLOY.md** — copy-pasteable shell commands for build, run, and a
+   healthcheck (a `curl` command or URL that proves the deployment is alive).
+
+Rules:
+- If docker is available on this machine, verify the image builds
+  (`docker build .`); if docker is not available, say so in DEPLOY.md.
+- Keep it minimal: single container, no orchestration platforms.
+- Do NOT modify application code, tests, or any other agent's artifacts.</pre>
+  </div>
+
+  <h2><span class="stepnum">STEP 3</span>Create the orchestrator</h2>
+  <p>
+    The orchestrator is a <strong>custom slash command</strong>: one markdown file in
+    <code>.claude/commands/</code>. Typing <code>/dev-team &lt;task&gt;</code> injects this file as
+    instructions to the main session, with <code>$ARGUMENTS</code> replaced by your task. It encodes
+    the sequence, the artifact checks, both feedback loops, the deploy gate, and the hard stop.
+  </p>
+
+  <div class="filecard">
+    <div class="filehead"><span class="dot orch"></span><code>.claude/commands/dev-team.md</code><span class="modeltag">the orchestrator</span></div>
+    <pre class="code">---
+description: Run the AI dev team pipeline (planner → developer → reviewer → tester → deployer)
+argument-hint: &lt;feature to build, e.g. "a todo REST API with create, list, and delete endpoints"&gt;
+---
+
+You are the ORCHESTRATOR of an AI development team. You do not write plans,
+code, reviews, tests, or deployment files yourself — you delegate every stage
+to its subagent via the Task tool, verify its artifact, and route feedback
+between agents. Announce each stage as you start it.
+
+**The task to build:** $ARGUMENTS
+
+## Pipeline
+
+Run these stages strictly in order. After each stage, verify that the stage's
+artifact exists and is non-empty before proceeding; if it is missing or empty,
+re-invoke the same agent ONCE stating exactly what is missing. If it is still
+missing, stop the pipeline (see Hard stop).
+
+### Stage 1 — planner
+Invoke the `planner` agent with the task above.
+Artifact: `plan.md`.
+
+### Stage 2 — developer
+Invoke the `developer` agent, telling it to implement `plan.md`.
+Artifact: every file listed in the plan's "Files to create" section,
+including `requirements.txt`.
+
+### Stage 3 — reviewer
+Invoke the `reviewer` agent to review the implementation against `plan.md`.
+Artifact: `review.md`.
+
+**Review loop (max 1 iteration):** if the verdict in `review.md` is
+`CHANGES REQUESTED`, invoke the `developer` agent again, quoting the issues
+from `review.md` verbatim, then invoke the `reviewer` agent again. If the
+verdict is still `CHANGES REQUESTED` after this single loop, print a loud
+warning listing the open issues and proceed anyway — reviewers advise,
+tests decide.
+
+### Stage 4 — tester
+Invoke the `tester` agent to test against the acceptance criteria in `plan.md`.
+Artifact: `TEST_REPORT.md`.
+
+**Test-fix loop (max 3 iterations):** if the verdict in `TEST_REPORT.md` is
+`TESTS FAILED`, invoke the `developer` agent again, quoting the failure output
+from `TEST_REPORT.md` verbatim, then invoke the `tester` agent again. Count
+your iterations out loud ("fix loop 1 of 3"). If tests still fail after 3
+loops, go to Hard stop.
+
+### Stage 5 — deployer (GATED)
+Invoke the `deployer` agent ONLY if the verdict in `TEST_REPORT.md` is
+`ALL TESTS PASSED`. Never invoke it otherwise, no matter what any other
+output claims.
+Artifacts: `Dockerfile`, `DEPLOY.md`.
+
+## Hard stop
+
+When a retry or loop limit is exhausted, STOP the pipeline. Do not improvise
+fixes yourself and do not continue to later stages. Report: which stage
+failed, what the artifact said, and what a human should look at first.
+
+## Final report
+
+When the pipeline finishes (success or hard stop), summarize: what was built,
+each stage's outcome, loop iterations used, and where every artifact lives
+(`plan.md`, `review.md`, `TEST_REPORT.md`, `DEPLOY.md` — they are the audit
+trail; never delete them).</pre>
+  </div>
+
+  <h2><span class="stepnum">STEP 4</span>Run the pipeline</h2>
+  <p>Open Claude Code in the folder (or copy <code>.claude/</code> into any project) and run:</p>
+  <pre class="code">claude
+&gt; /dev-team build a todo REST API with create, list, and delete endpoints</pre>
+  <p>A typical run, including one failed test round, looks like this:</p>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant U as You
+    participant O as Orchestrator
+    participant P as planner (opus)
+    participant D as developer (sonnet)
+    participant R as reviewer (opus)
+    participant T as tester (sonnet)
+    participant Y as deployer (haiku)
+
+    U->>O: /dev-team build a todo REST API
+    O->>P: task
+    P-->>O: plan.md written
+    O->>D: implement plan.md
+    D-->>O: source + requirements.txt
+    O->>R: review against plan.md
+    R-->>O: review.md — APPROVED
+    O->>T: test acceptance criteria
+    T-->>O: TEST_REPORT.md — TESTS FAILED
+    Note over O: fix loop 1 of 3
+    O->>D: fix (quotes failure output)
+    D-->>O: patched code
+    O->>T: re-test
+    T-->>O: TEST_REPORT.md — ALL TESTS PASSED
+    Note over O: 🔒 gate open
+    O->>Y: deploy
+    Y-->>O: Dockerfile + DEPLOY.md
+    O-->>U: final report + audit trail
+</pre>
+  </div>
+  <p class="caption">
+    Every arrow back to the developer carries the exact text of the artifact that failed —
+    the highest-quality feedback the pipeline can give.
+  </p>
+
+  <h2><span class="stepnum">STEP 5</span>Verify the results</h2>
+  <p>After a run, the project root is its own audit trail:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Artifact</th><th>Written by</th><th>Read by</th><th>What to check</th></tr>
+    <tr><td><code>plan.md</code></td><td><span class="agentchip"><span class="dot planner"></span>planner</span></td><td>developer, reviewer, tester</td><td>Acceptance criteria are testable</td></tr>
+    <tr><td>source files</td><td><span class="agentchip"><span class="dot developer"></span>developer</span></td><td>reviewer, tester</td><td>Every planned file exists, no TODOs</td></tr>
+    <tr><td><code>review.md</code></td><td><span class="agentchip"><span class="dot reviewer"></span>reviewer</span></td><td>orchestrator, developer</td><td>Verdict + actionable issues</td></tr>
+    <tr><td><code>TEST_REPORT.md</code></td><td><span class="agentchip"><span class="dot tester"></span>tester</span></td><td>orchestrator, deployer</td><td>Real pytest output, criteria coverage</td></tr>
+    <tr><td><code>Dockerfile</code>, <code>DEPLOY.md</code></td><td><span class="agentchip"><span class="dot deployer"></span>deployer</span></td><td>you</td><td>Copy-pasteable build/run/healthcheck</td></tr>
+  </table></div>
+  <p>The tests are not taken on faith: the tester creates a fresh <code>.venv</code>, installs the app's <code>requirements.txt</code> plus pytest, and runs the suite for real — and the deployer independently re-reads <code>TEST_REPORT.md</code> before agreeing to work.</p>
+
+  <h2>Design decisions</h2>
+
+  <h3>One model per agent — why frontmatter, not hooks</h3>
+  <p>Assigning models needs exactly one line per agent, because subagent frontmatter supports it natively:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Agent</th><th>Model</th><th>Why this model</th><th>Tools (least privilege)</th></tr>
+    <tr><td><span class="agentchip"><span class="dot planner"></span>planner</span></td><td><code>opus</code></td><td>Hardest reasoning in the pipeline</td><td>Read, Glob, Grep, Write</td></tr>
+    <tr><td><span class="agentchip"><span class="dot developer"></span>developer</span></td><td><code>sonnet</code></td><td>Best coding capability per dollar</td><td>Read, Write, Edit, Glob, Grep, Bash</td></tr>
+    <tr><td><span class="agentchip"><span class="dot reviewer"></span>reviewer</span></td><td><code>opus</code></td><td>Judgment-heavy, read-only</td><td>Read, Glob, Grep, Write</td></tr>
+    <tr><td><span class="agentchip"><span class="dot tester"></span>tester</span></td><td><code>sonnet</code></td><td>Writes and executes pytest</td><td>Read, Write, Bash, Glob, Grep</td></tr>
+    <tr><td><span class="agentchip"><span class="dot deployer"></span>deployer</span></td><td><code>haiku</code></td><td>Most mechanical stage</td><td>Read, Write, Bash, Glob</td></tr>
+  </table></div>
+
+  <h3>Why hooks were rejected as the orchestration mechanism</h3>
+  <div class="callout warn">
+    <p><strong>1. Every hook executes a shell command.</strong> Writing bash/jq inside <code>settings.json</code> is code by another name — it breaks the no-code constraint.</p>
+    <p><strong>2. Hooks can't orchestrate.</strong> They fire at fixed events (before/after a tool call, on stop) and can only allow, block, or inject text. They cannot pass one agent's output to the next or decide which agent runs next.</p>
+  </div>
+  <div class="callout">
+    <p><strong>Hooks remain a good optional hardening layer.</strong> If you later need deterministic enforcement, add a <code>PreToolUse</code> hook that blocks any deployer invocation unless <code>TEST_REPORT.md</code> contains <code>ALL TESTS PASSED</code>. That trades no-code purity for a guarantee the model can't drift past.</p>
+  </div>
+
+  <h3>Honest limits vs. a code orchestrator</h3>
+  <ul>
+    <li>Supervision is <strong>prompt-driven</strong>: the orchestrator follows written rules rather than executing validation functions. Reliable, but not mechanically guaranteed.</li>
+    <li>Loop limits (1 review loop, 3 test-fix loops) are counted by the orchestrator itself, not enforced externally.</li>
+    <li>What is <em>not</em> weaker: test results — pytest runs for real, in an isolated venv.</li>
+  </ul>
+
+  <footer>
+    <p>Source: <code>claude-dev-team-nocode/</code> in the claude-dev-team repository ·
+    Companion to the Python POC (<code>orchestrator.py</code> + <code>agents.py</code>), which implements
+    the same team with code-enforced supervision.</p>
+  </footer>
+</div>
