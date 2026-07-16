@@ -33,8 +33,8 @@ from agents import PIPELINE, parse_json_response
 MODEL = "claude-sonnet-4-6"     # good balance of capability and cost
 MAX_TOKENS = 8000
 MAX_RETRIES = 2                  # per stage, on validation failure
-MAX_REVIEW_LOOPS = 1             # dev<->review feedback iterations
 MAX_TEST_FIX_LOOPS = 2           # dev<->test feedback iterations
+MAX_REVIEW_LOOPS = 1             # dev<->review feedback iterations
 OUTPUT_DIR = Path("pipeline_output")
 APP_DIR = OUTPUT_DIR / "app"     # where generated code + tests are written
 VENV_DIR = APP_DIR / ".venv"    # isolated env for the GENERATED app's deps
@@ -224,6 +224,7 @@ def main() -> None:
     # Stage 3: Code review — issues go back to the developer, bounded
     code = run_review(reviewer, developer, plan, code, dev_input)
 
+    # Stage 4: Testing — with a supervised dev<->test feedback loop
     tester_input = (
         f"ACCEPTANCE CRITERIA:\n{json.dumps(plan['acceptance_criteria'], indent=2)}\n\n"
         f"APPLICATION FILES:\n{json.dumps(code['files'], indent=2)}"
