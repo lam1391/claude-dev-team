@@ -37,7 +37,7 @@ MAX_TEST_FIX_LOOPS = 2           # dev<->test feedback iterations
 OUTPUT_DIR = Path("pipeline_output")
 APP_DIR = OUTPUT_DIR / "app"     # where generated code + tests are written
 VENV_DIR = APP_DIR / ".venv"    # isolated env for the GENERATED app's deps
-VENV_PYTHON = VENV_DIR / "bin" / "python"
+VENV_PYTHON = str(VENV_DIR.resolve() / "bin" / "python")  # absolute: run_tests uses cwd=APP_DIR
 PIP_TIMEOUT = 300                # seconds for dependency installation
 MOCK = os.environ.get("MOCK") == "1"
 
@@ -130,10 +130,8 @@ def setup_venv() -> None:
 
 def install_deps() -> tuple[bool, str]:
     """Install the generated requirements.txt + pytest into the app venv."""
-    # Use absolute path to venv python (not .resolve() which follows symlinks)
-    venv_python = str(VENV_DIR.resolve() / "bin" / "python")
     result = subprocess.run(
-        [venv_python, "-m", "pip", "install", "-q",
+        [VENV_PYTHON, "-m", "pip", "install", "-q",
          "-r", str(APP_DIR / "requirements.txt"), "pytest"],
         capture_output=True, text=True, timeout=PIP_TIMEOUT,
     )
@@ -163,10 +161,8 @@ def install_with_dev_fix(code: dict, dev_input: str, developer: dict) -> dict:
 
 def run_tests() -> tuple[bool, str]:
     """Execute pytest against the generated app. Returns (passed, output)."""
-    # Use absolute path to venv python (not .resolve() which follows symlinks)
-    venv_python = str(VENV_DIR.resolve() / "bin" / "python")
     result = subprocess.run(
-        [venv_python, "-m", "pytest", "-x", "-q", "--no-header"],
+        [VENV_PYTHON, "-m", "pytest", "-x", "-q", "--no-header"],
         cwd=APP_DIR, capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
