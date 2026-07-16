@@ -47,7 +47,7 @@ You are the Testing Agent. ...
 
 | Aspect | Python orchestrator (this repo's core) | Claude Code subagents |
 |---|---|---|
-| Setup effort | Write/maintain Python | Drop in 4 markdown files |
+| Setup effort | Write/maintain Python | Drop in 5 markdown files |
 | Validation & retries | Deterministic, in code | Prompt-driven, best-effort |
 | Handoff medium | JSON contracts | Files in the working directory |
 | Test execution | Orchestrator runs pytest itself | Tester subagent runs pytest via Bash |

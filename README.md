@@ -1,6 +1,6 @@
 # Claude Dev Team — Multi-Agent Pipeline POC
 
-A proof of concept for an AI development team built with the Claude API. Four specialized agents work in sequence — each one's output becomes the next one's input — while an **orchestrator** supervises the whole pipeline: it validates every output, retries failed stages, executes the generated tests for real, and routes test failures back to the Development Agent.
+A proof of concept for an AI development team built with the Claude API. Five specialized agents work in sequence — each one's output becomes the next one's input — while an **orchestrator** supervises the whole pipeline: it validates every output, retries failed stages, executes the generated tests for real, and routes both review issues and test failures back to the Development Agent for fixes.
 
 ## Documentation
 
@@ -15,20 +15,23 @@ A proof of concept for an AI development team built with the Claude API. Four sp
 ## Architecture
 
 ```
-                          ORCHESTRATOR (orchestrator.py)
-                     validates · retries · routes · audits
-      ┌────────────┬────────────┬────────────┬────────────┬────────────┐
-      ▼            ▼            ▼            ▼            ▼            ▼
-┌───────────┐┌───────────┐┌───────────┐┌───────────┐┌───────────┐
-│ 1. Analysis││ 2. Develop-││ 3. Code   ││ 4. Testing ││ 5. Deploy- │
-│ & Planning ││    ment    ││   Review  ││            ││    ment    │
-└───────────┘└───────────┘└───────────┘└───────────┘└───────────┘
-  plan (JSON)   code files    approve /    pytest files   Dockerfile +
-                    ▲  ▲      issues           │           deploy steps
-                    │  └─── review loop ──┘│
-                    └────── test fix loop ─────┘
-             (orchestrator runs pip install + pytest for real;
-              review issues and test failures go back to dev)
+                    ORCHESTRATOR (orchestrator.py)
+               validates · retries · routes · audits
+
+  ┌────────────┬────────────┬────────────┬────────────┬────────────┐
+  ▼            ▼            ▼            ▼            ▼
+
+┌────────────┐┌────────────┐┌────────────┐┌────────────┐┌────────────┐
+│ 1. Plan    ││2. Develop  ││3. Review   ││4. Test     ││5. Deploy   │
+│ & Analyze  ││            ││            ││            ││            │
+└────────────┘└────────────┘└────────────┘└────────────┘└────────────┘
+ plan (JSON)  code files    approve/    pytest files  Dockerfile +
+                  ▲  ▲      issues          │        deploy steps
+                  │  └───── review loop ──┘
+                  └─────── test fix loop ───┘
+
+     (orchestrator runs pip install + pytest for real;
+      review issues and test failures go back to dev)
 ```
 
 The key insight: each "agent" is simply **one API call with a specialized system prompt and a strict JSON output contract**. The intelligence of the pipeline lives in the orchestrator, which is plain Python you fully control — exactly like a DAG where each node happens to be an LLM call.
