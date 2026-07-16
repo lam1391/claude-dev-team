@@ -15,11 +15,10 @@ A proof of concept for an AI development team built with the Claude API. Five sp
 ## Architecture
 
 ```
-                    ORCHESTRATOR (orchestrator.py)
+                   ORCHESTRATOR (orchestrator.py)
                validates · retries · routes · audits
-
-  ┌────────────┬────────────┬────────────┬────────────┬────────────┐
-  ▼            ▼            ▼            ▼            ▼
+      ┌─────────────┬─────────────┬─────────────┬─────────────┐
+      ▼             ▼             ▼             ▼             ▼
 
 ┌────────────┐┌────────────┐┌────────────┐┌────────────┐┌────────────┐
 │ 1. Plan    ││2. Develop  ││3. Review   ││4. Test     ││5. Deploy   │
