@@ -20,6 +20,7 @@ Usage:
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -35,6 +36,9 @@ MAX_RETRIES = 2                  # per stage, on validation failure
 MAX_TEST_FIX_LOOPS = 2           # dev<->test feedback iterations
 OUTPUT_DIR = Path("pipeline_output")
 APP_DIR = OUTPUT_DIR / "app"     # where generated code + tests are written
+VENV_DIR = APP_DIR / ".venv"    # isolated env for the GENERATED app's deps
+VENV_PYTHON = VENV_DIR / "bin" / "python"
+PIP_TIMEOUT = 300                # seconds for dependency installation
 MOCK = os.environ.get("MOCK") == "1"
 
 DEFAULT_TASK = "Build a minimal REST API for a todo list with endpoints to create, list, and delete todos."
@@ -116,10 +120,53 @@ def write_files(files: list[dict], base: Path) -> None:
         print(f"  ↳ wrote {target}")
 
 
+def setup_venv() -> None:
+    """Create a fresh venv for the generated app (once per run)."""
+    if VENV_DIR.exists():
+        shutil.rmtree(VENV_DIR)
+    subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
+    print(f"  ↳ created venv: {VENV_DIR}")
+
+
+def install_deps() -> tuple[bool, str]:
+    """Install the generated requirements.txt + pytest into the app venv."""
+    # Use absolute path to venv python (not .resolve() which follows symlinks)
+    venv_python = str(VENV_DIR.resolve() / "bin" / "python")
+    result = subprocess.run(
+        [venv_python, "-m", "pip", "install", "-q",
+         "-r", str(APP_DIR / "requirements.txt"), "pytest"],
+        capture_output=True, text=True, timeout=PIP_TIMEOUT,
+    )
+    output = result.stdout + result.stderr
+    return result.returncode == 0, output
+
+
+def install_with_dev_fix(code: dict, dev_input: str, developer: dict) -> dict:
+    """Install deps; on failure, send the pip error back to the developer once."""
+    ok, output = install_deps()
+    if ok:
+        print("  ↳ dependencies installed")
+        return code
+    print(f"  ✗ dependency install failed:\n{output[-1500:]}")
+    fix_input = (
+        f"{dev_input}\n\nYOUR PREVIOUS CODE:\n{json.dumps(code['files'], indent=2)}"
+        f"\n\nDEPENDENCY INSTALL FAILED — fix requirements.txt:\n{output[-3000:]}"
+    )
+    code = run_stage(developer, fix_input)
+    write_files(code["files"], APP_DIR)
+    ok, output = install_deps()
+    if not ok:
+        raise RuntimeError(f"Dependency install still failing:\n{output[-2000:]}")
+    print("  ↳ dependencies installed")
+    return code
+
+
 def run_tests() -> tuple[bool, str]:
     """Execute pytest against the generated app. Returns (passed, output)."""
+    # Use absolute path to venv python (not .resolve() which follows symlinks)
+    venv_python = str(VENV_DIR.resolve() / "bin" / "python")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-x", "-q", "--no-header"],
+        [venv_python, "-m", "pytest", "-x", "-q", "--no-header"],
         cwd=APP_DIR, capture_output=True, text=True, timeout=120,
     )
     output = result.stdout + result.stderr
@@ -143,6 +190,8 @@ def main() -> None:
     dev_input = f"PLAN:\n{json.dumps(plan, indent=2)}"
     code = run_stage(developer, dev_input)
     write_files(code["files"], APP_DIR)
+    setup_venv()
+    code = install_with_dev_fix(code, dev_input, developer)
 
     tester_input = (
         f"ACCEPTANCE CRITERIA:\n{json.dumps(plan['acceptance_criteria'], indent=2)}\n\n"
@@ -169,6 +218,7 @@ def main() -> None:
         )
         code = run_stage(developer, fix_input)
         write_files(code["files"], APP_DIR)
+        code = install_with_dev_fix(code, dev_input, developer)
 
     # Stage 4: Deployment — input is the verified code
     deploy_input = (
