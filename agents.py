@@ -100,7 +100,7 @@ def validate_developer(data: dict) -> tuple[bool, str]:
             return False, f"Each file needs 'path' and 'content': got {list(f.keys())}"
         if not f["content"].strip():
             return False, f"File {f['path']} has empty content"
-    if not any(f["path"].endswith("requirements.txt") for f in data["files"]):
+    if not any(f["path"] == "requirements.txt" for f in data["files"]):
         return False, "files must include a requirements.txt at the app root"
     return True, ""
 

@@ -122,7 +122,7 @@ curl http://localhost:8000/todos
 
 **Why `claude-sonnet-4-6`?** Strong coding capability at a good price for a POC. You can mix models per stage — e.g., `claude-opus-4-8` for the planner (hardest reasoning) and `claude-haiku-4-5` for the deployer (most mechanical). Change `MODEL` in `orchestrator.py`, or make it per-stage in `agents.py`.
 
-**Cost note:** one full run makes 4–8 API calls (more if retries trigger). With Sonnet, expect cents per run for tasks this size.
+**Cost note:** one full run makes 5–10 API calls (more if retries trigger). With Sonnet, expect cents per run for tasks this size.
 
 ## Alternative: the same team as Claude Code subagents
 

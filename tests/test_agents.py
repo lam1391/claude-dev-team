@@ -15,6 +15,17 @@ def test_developer_rejects_missing_requirements():
     assert "requirements.txt" in err
 
 
+def test_developer_rejects_non_root_requirements():
+    ok, err = agents.validate_developer(
+        _dev_output([
+            {"path": "main.py", "content": "x = 1"},
+            {"path": "sub/requirements.txt", "content": "fastapi>=0.115\n"},
+        ])
+    )
+    assert not ok
+    assert "requirements.txt" in err
+
+
 def test_developer_accepts_with_requirements():
     ok, err = agents.validate_developer(
         _dev_output([
