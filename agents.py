@@ -72,7 +72,8 @@ Your job: write the complete, working code for every file in the plan.
 Output JSON schema:
 {{
   "files": [
-    {{"path": "relative/path.py", "content": "full file content"}}
+    {{"path": "relative/path.py", "content": "full file content"}},
+    {{"path": "requirements.txt", "content": "fastapi>=0.115\\nhttpx>=0.27\\n"}}
   ],
   "how_to_run": "one-line command to start the app",
   "notes": "anything the Testing Agent should know"
@@ -80,6 +81,10 @@ Output JSON schema:
 
 Rules:
 - Implement EVERY file listed in the plan's files_to_create.
+- ALWAYS include a requirements.txt at the app root pinning at least major
+  versions, covering every third-party import in your code. Do NOT list
+  pytest — the orchestrator installs it. If the app uses FastAPI, include
+  httpx (fastapi.testclient needs it).
 - Code must be complete and syntactically valid — it will be executed.
 - Follow the acceptance criteria exactly; the Testing Agent will verify them.
 - If a previous test run failed, you will receive the failure output —
@@ -95,6 +100,8 @@ def validate_developer(data: dict) -> tuple[bool, str]:
             return False, f"Each file needs 'path' and 'content': got {list(f.keys())}"
         if not f["content"].strip():
             return False, f"File {f['path']} has empty content"
+    if not any(f["path"].endswith("requirements.txt") for f in data["files"]):
+        return False, "files must include a requirements.txt at the app root"
     return True, ""
 
 

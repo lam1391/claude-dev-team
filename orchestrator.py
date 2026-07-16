@@ -224,7 +224,9 @@ def mock_response(system_prompt: str) -> str:
                 "    if tid not in todos:\n"
                 "        raise HTTPException(404)\n"
                 "    return todos.pop(tid)\n"
-            )}],
+            )},
+            {"path": "requirements.txt",
+             "content": "fastapi>=0.115\nuvicorn>=0.30\nhttpx>=0.27\n"}],
             "how_to_run": "uvicorn main:app",
             "notes": "in-memory storage",
         })
